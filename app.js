@@ -16,7 +16,7 @@ app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   next();
 });
-
+console.log("Server started");
 app.use(locationRoutes);
 
 // app.use((req, res, next) => {
