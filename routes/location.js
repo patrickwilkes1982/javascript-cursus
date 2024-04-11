@@ -1,64 +1,86 @@
 const express = require('express');
 const mongodb = require('mongodb');
-const MongoClient = mongodb.MongoClient;
-
+const { MongoClient } = mongodb;
+ 
 const router = express.Router();
-
-const url =
-  'mongodb+srv://johndoo:y7NqqkOyEwu6IyhE@cluster0-ntrwp.mongodb.net/locations?retryWrites=true&w=majority';
-
-const client = new MongoClient(url);
-
+ 
+const uri =
+  'mongodb+srv://johndoo:y7NqqkOyEwu6IyhE@atlascluster.drnm2sy.mongodb.net/?retryWrites=true&w=majority&appName=AtlasCluster';
+ 
+// Create a new MongoClient
+const client = new MongoClient(uri, {useUnifiedTopology: true});
+ 
 const locationStorage = {
-  locations: []
+  locations: [],
 };
-
-router.post('/add-location', (req, res, next) => {
-  // const id = Math.random();
-  client.connect(function(err, client) {
-    const db = client.db('locations');
-
-    // Insert a single document
-    db.collection('user-locations').insertOne(
-      {
-        address: req.body.address,
-        coords: { lat: req.body.lat, lng: req.body.lng }
-      },
-      function(err, r) {
-        // if (err) {}
-        console.log(r);
-        res.json({ message: 'Stored location!', locId: r.insertedId });
-      }
-    );
+ 
+router.post('/add-location', async (req, res, next) => {
+  /* const id = Math.random();
+  locationStorage.locations.push({
+    id: id,
+    address: req.body.address,
+    coords: { lat: req.body.lat, lng: req.body.lng },
   });
-
-  // locationStorage.locations.push({
-  //   id: id,
-  //   address: req.body.address,
-  //   coords: { lat: req.body.lat, lng: req.body.lng }
-  // });
-});
-
-router.get('/location/:lid', (req, res, next) => {
-  const locationId = req.params.lid;
-
-  client.connect(function(err, client) {
-    const db = client.db('locations');
-
-    // Insert a single document
-    db.collection('user-locations').findOne(
-      {
-        _id: new mongodb.ObjectId(locationId)
-      },
-      function(err, doc) {
-        // if (err) {}
-        if (!doc) {
-          return res.status(404).json({ message: 'Not found!' });
-        }
-        res.json({ address: doc.address, coordinates: doc.coords });
-      }
+  console.log(locationStorage.locations); */
+ 
+  try {
+    await client.connect();
+    const database = client.db('locations');
+    const collection = database.collection('user-locations');
+    // create a document to be inserted
+    const doc = {
+      address: req.body.address,
+      coords: { lat: req.body.lat, lng: req.body.lng },
+    };
+    const result = await collection.insertOne(doc);
+    res.json({ message: 'Stored location!', locId: result.insertedId });
+    console.log(
+      `${result.insertedCount} location documents were inserted with the _id: ${result.insertedId}`
     );
-  });
+ 
+  } catch (err) {
+    console.dir(err);
+  } finally {
+    // await client.close(); // Commented as throwing some topology errors on mongo connection
+  }
 });
-
+ 
+router.get('/location/:locId', async (req, res, next) => {
+  // const location = locationStorage.locations.find(loc => loc.id === locationId);
+  const locationId = req.params.locId;
+  console.log(locationId);
+ 
+  try {
+    await client.connect();
+    const database = client.db('locations');
+    const collection = database.collection('user-locations');
+ 
+    // Query for a movie that has the title 'The Room'
+    const query = {
+      _id: new mongodb.ObjectId(locationId),
+    };
+ 
+    const location = await collection.findOne(query);
+    // since this method returns the matched document, not a cursor, print it directly
+    console.log(location);
+ 
+    if (!location) {
+      res.status(404).json('Not Found!');
+      return;
+    }
+ 
+    res.json({
+      message: 'Retrieved location!',
+      coordinates: location.coords,
+      address: location.address,
+    });
+ 
+  } catch (err) {
+    console.dir(err);
+  } finally {
+    // await client.close(); // Commented as throwing some topology errors on mongo connection
+  }
+});
+ 
 module.exports = router;
+ 
